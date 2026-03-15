@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laufband Schritt-Rechner</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 650px;
+            margin: 0 auto;
+        }
+        h2, h3 {
+            color: #2c3e50;
+        }
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .segment {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        label {
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        input[type="number"] {
+            width: 80px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .btn-remove {
+            background-color: #e74c3c;
+            padding: 5px 10px;
+            font-size: 0.8em;
+        }
+        .btn-remove:hover {
+            background-color: #c0392b;
+        }
+        .btn-calculate {
+            background-color: #2ecc71;
+            width: 100%;
+            font-size: 1.2em;
+            margin-top: 10px;
+        }
+        .btn-calculate:hover {
+            background-color: #27ae60;
+        }
+        #result-box {
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-top: 20px;
+        }
+        .formula-info {
+            font-size: 0.9em;
+            color: #444;
+            background: #eaf2f8;
+            padding: 10px;
+            border-left: 4px solid #3498db;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .method-selector {
+            margin-bottom: 15px;
+        }
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        #exponential-settings {
+            display: none; /* Standardmäßig versteckt */
+            background: #fdfefe;
+            border: 1px dashed #ccc;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>🏃 Laufband Schritt-Rechner</h2>
+
+    <div class="card">
+        <h3>1. Berechnungsmethode wählen</h3>
+        
+        <div class="method-selector">
+            <div class="radio-group">
+                <label>
+                    <input type="radio" name="calcMethod" value="poly" checked onchange="toggleMethod()"> 
+                    Standard (Polynomfunktion)
+                </label>
+                <label>
+                    <input type="radio" name="calcMethod" value="expo" onchange="toggleMethod()"> 
+                    Manuell (Exponentialfunktion)
+                </label>
+            </div>
+        </div>
+
+        <div id="poly-info" class="formula-info">
+            <strong>Verwendete Formel (Schritte pro km):</strong><br>
+            y = -17,219x³ + 346,42x² - 2303,9x + 6268,3<br>
+            <em>(x = Geschwindigkeit in km/h)</em>
+        </div>
+
+        <div id="exponential-settings">
+            <p class="formula-info">Formel: <strong>Schritte pro km = A × e^(B × km/h)</strong></p>
+            <div>
+                <label for="paramA">Höhe (A):</label>
+                <input type="number" id="paramA" value="1500" step="10">
+                
+                <label for="paramB" style="margin-left: 15px;">Vorfaktor (B):</label>
+                <input type="number" id="paramB" value="-0.05" step="0.01">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>2. Deine Trainings-Segmente</h3>
+        <div id="segment-container">
+            <div class="segment">
+                <div>
+                    <label>Distanz (m): </label>
+                    <input type="number" class="dist-input" value="800" min="0">
+                </div>
+                <div>
+                    <label>Geschwindigkeit (km/h): </label>
+                    <input type="number" class="speed-input" value="3.5" min="0" step="0.1">
+                </div>
+            </div>
+        </div>
+        
+        <button type="button" onclick="addSegment()">+ Weiteres Segment hinzufügen</button>
+    </div>
+
+    <div class="card">
+        <button class="btn-calculate" onclick="calculateSteps()">Gesamtschritte Berechnen</button>
+        <div id="result-box">
+            Gesamtschritte: <span id="total-steps">0</span>
+        </div>
+    </div>
+
+    <script>
+        // Funktion zum Umschalten der Anzeige zwischen Polynom und Exponential
+        function toggleMethod() {
+            const method = document.querySelector('input[name="calcMethod"]:checked').value;
+            const expoSettings = document.getElementById('exponential-settings');
+            const polyInfo = document.getElementById('poly-info');
+            
+            if (method === 'expo') {
+                expoSettings.style.display = 'block';
+                polyInfo.style.display = 'none';
+            } else {
+                expoSettings.style.display = 'none';
+                polyInfo.style.display = 'block';
+            }
+        }
+
+        // Funktion zum Hinzufügen eines neuen Segments
+        function addSegment() {
+            const container = document.getElementById('segment-container');
+            const segmentDiv = document.createElement('div');
+            segmentDiv.className = 'segment';
+            
+            segmentDiv.innerHTML = `
+                <div>
+                    <label>Distanz (m): </label>
+                    <input type="number" class="dist-input" value="1000" min="0">
+                </div>
+                <div>
+                    <label>Geschwindigkeit (km/h): </label>
+                    <input type="number" class="speed-input" value="5.0" min="0" step="0.1">
+                </div>
+                <button class="btn-remove" onclick="this.parentElement.remove()">X Entfernen</button>
+            `;
+            
+            container.appendChild(segmentDiv);
+        }
+
+        // Hauptfunktion zur Berechnung
+        function calculateSteps() {
+            // Ausgewählte Methode prüfen
+            const method = document.querySelector('input[name="calcMethod"]:checked').value;
+            
+            // Hole alle Segmente
+            const segments = document.querySelectorAll('.segment');
+            let totalSteps = 0;
+
+            // Gehe durch jedes Segment und berechne die Schritte
+            segments.forEach(segment => {
+                const distInMeters = parseFloat(segment.querySelector('.dist-input').value) || 0;
+                const speed = parseFloat(segment.querySelector('.speed-input').value) || 0;
+                
+                // Distanz in km umrechnen
+                const distInKm = distInMeters / 1000;
+                let stepsPerKm = 0;
+
+                if (method === 'poly') {
+                    // Standard: Polynomfunktion aus dem Bild anwenden
+                    // y = -17.219x^3 + 346.42x^2 - 2303.9x + 6268.3
+                    stepsPerKm = 
+                        (-17.219 * Math.pow(speed, 3)) + 
+                        (346.42 * Math.pow(speed, 2)) - 
+                        (2303.9 * speed) + 
+                        6268.3;
+                } else {
+                    // Manuell: Exponentialfunktion anwenden
+                    const A = parseFloat(document.getElementById('paramA').value);
+                    const B = parseFloat(document.getElementById('paramB').value);
+                    stepsPerKm = A * Math.exp(B * speed);
+                }
+                
+                // Gesamtschritte für dieses Segment (Schritte pro km mal Distanz in km)
+                const segmentSteps = distInKm * stepsPerKm;
+                
+                // Nur addieren, wenn das Ergebnis positiv ist (verhindert Fehler bei extremen Werten)
+                if (segmentSteps > 0) {
+                    totalSteps += segmentSteps;
+                }
+            });
+
+            // Ergebnis runden und anzeigen
+            document.getElementById('total-steps').innerText = Math.round(totalSteps).toLocaleString('de-DE');
+        }
+    </script>
+</body>
+</html>
