@@ -59,6 +59,7 @@
             font-size: 1.2em;
             margin-top: 10px;
             padding: 15px;
+            font-weight: bold;
         }
         .btn-calculate:hover { background-color: #27ae60; }
         #result-box {
@@ -87,13 +88,14 @@
             border: 1px dashed #ccc;
             padding: 15px;
             border-radius: 5px;
+            margin-top: 10px;
         }
         .input-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
             gap: 10px;
         }
-        #exponential-settings { display: none; }
+        #custom-poly-settings { display: none; }
     </style>
 </head>
 <body>
@@ -105,30 +107,28 @@
         
         <div class="radio-group">
             <label style="flex-direction: row; align-items: center; gap: 5px;">
-                <input type="radio" name="calcMethod" value="poly" checked onchange="toggleMethod()"> 
-                Polynomfunktion (Standard)
+                <input type="radio" name="calcMethod" value="fixed_poly" checked onchange="toggleMethod()"> 
+                Standard (Feste Formel)
             </label>
             <label style="flex-direction: row; align-items: center; gap: 5px;">
-                <input type="radio" name="calcMethod" value="expo" onchange="toggleMethod()"> 
-                Exponentialfunktion
+                <input type="radio" name="calcMethod" value="custom_poly" onchange="toggleMethod()"> 
+                Manuelles Polynom
             </label>
         </div>
 
-        <div id="poly-settings" class="settings-panel">
-            <p class="formula-info">Formel (Schritte pro km): <strong>y = ax³ + bx² + cx + d</strong><br><em>(x = km/h)</em></p>
-            <div class="input-grid">
-                <label>Wert a: <input type="text" id="polyA" value="-17.219"></label>
-                <label>Wert b: <input type="text" id="polyB" value="346.42"></label>
-                <label>Wert c: <input type="text" id="polyC" value="-2303.9"></label>
-                <label>Wert d: <input type="text" id="polyD" value="6268.3"></label>
-            </div>
+        <div id="fixed-poly-info" class="formula-info">
+            <strong>Feste Standard-Formel (Schritte pro km):</strong><br>
+            y = -17,219x³ + 346,42x² - 2303,9x + 6268,3<br>
+            <em>(x = Geschwindigkeit in km/h)</em>
         </div>
 
-        <div id="exponential-settings" class="settings-panel">
-            <p class="formula-info">Formel (Schritte pro km): <strong>y = A × e^(B × x)</strong><br><em>(x = km/h)</em></p>
+        <div id="custom-poly-settings" class="settings-panel">
+            <p class="formula-info">Eigene Formel: <strong>y = a·x³ + b·x² + c·x + d</strong></p>
             <div class="input-grid">
-                <label>Höhe (A): <input type="text" id="paramA" value="1500"></label>
-                <label>Vorfaktor (B): <input type="text" id="paramB" value="-0.05"></label>
+                <label>Wert a: <input type="text" id="customA" value="0"></label>
+                <label>Wert b: <input type="text" id="customB" value="0"></label>
+                <label>Wert c: <input type="text" id="customC" value="0"></label>
+                <label>Wert d: <input type="text" id="customD" value="0"></label>
             </div>
         </div>
     </div>
@@ -153,14 +153,19 @@
     </div>
 
     <script>
-        // Wechselt zwischen den Eingabefeldern für die Formeln
+        // Wechselt zwischen festem und manuellem Polynom
         function toggleMethod() {
             const method = document.querySelector('input[name="calcMethod"]:checked').value;
-            document.getElementById('poly-settings').style.display = (method === 'poly') ? 'block' : 'none';
-            document.getElementById('exponential-settings').style.display = (method === 'expo') ? 'block' : 'none';
+            if (method === 'fixed_poly') {
+                document.getElementById('fixed-poly-info').style.display = 'block';
+                document.getElementById('custom-poly-settings').style.display = 'none';
+            } else {
+                document.getElementById('fixed-poly-info').style.display = 'none';
+                document.getElementById('custom-poly-settings').style.display = 'block';
+            }
         }
 
-        // Fügt ein neues Segment hinzu
+        // Fügt ein neues Trainings-Segment hinzu
         function addSegment() {
             const container = document.getElementById('segment-container');
             const segmentDiv = document.createElement('div');
@@ -173,66 +178,61 @@
             container.appendChild(segmentDiv);
         }
 
-        // Hilfsfunktion: Macht aus Kommas Punkte und fängt leere Felder sicher ab
-        function parseSicher(wert) {
-            if (!wert) return 0;
-            // Wandelt den Wert in einen String um, tauscht Komma gegen Punkt und macht eine Zahl daraus
-            return parseFloat(wert.toString().replace(',', '.')) || 0;
-        }
-
-        // Die Hauptberechnung
+        // Hauptfunktion zur Berechnung
         function calculateSteps() {
-            const method = document.querySelector('input[name="calcMethod"]:checked').value;
-            const segments = document.querySelectorAll('.segment');
-            let totalSteps = 0;
+            try {
+                const method = document.querySelector('input[name="calcMethod"]:checked').value;
+                const segments = document.querySelectorAll('.segment');
+                let totalSteps = 0;
 
-            segments.forEach(segment => {
-                const distInMeters = parseSicher(segment.querySelector('.dist-input').value);
-                const speed = parseSicher(segment.querySelector('.speed-input').value);
-                
-                // Wenn nichts Sinnvolles eingetragen wurde, ignoriere dieses Segment
-                if (distInMeters <= 0 || speed <= 0) return;
-
-                const distInKm = distInMeters / 1000;
-                let stepsPerKm = 0;
-
-                if (method === 'poly') {
-                    // Werte aus den eigenen Polynom-Feldern holen
-                    const a = parseSicher(document.getElementById('polyA').value);
-                    const b = parseSicher(document.getElementById('polyB').value);
-                    const c = parseSicher(document.getElementById('polyC').value);
-                    const d = parseSicher(document.getElementById('polyD').value);
+                // Gehe durch jedes angelegte Segment
+                for (let i = 0; i < segments.length; i++) {
+                    const segment = segments[i];
+                    const distStr = segment.querySelector('.dist-input').value;
+                    const speedStr = segment.querySelector('.speed-input').value;
                     
-                    // Polynomfunktion: ax^3 + bx^2 + cx + d
-                    stepsPerKm = 
-                        (a * Math.pow(speed, 3)) + 
-                        (b * Math.pow(speed, 2)) + 
-                        (c * speed) + 
-                        d;
+                    // Wandelt Text in Kommazahlen um (ersetzt Komma durch Punkt für JavaScript)
+                    const distInMeters = parseFloat(distStr.replace(',', '.')) || 0;
+                    const speed = parseFloat(speedStr.replace(',', '.')) || 0;
+                    
+                    if (distInMeters <= 0 || speed <= 0) continue; // Überspringen, falls 0 oder leer
+
+                    const distInKm = distInMeters / 1000;
+                    let a = 0, b = 0, c = 0, d = 0;
+
+                    if (method === 'fixed_poly') {
+                        // Deine festen Werte
+                        a = -17.219;
+                        b = 346.42;
+                        c = -2303.9;
+                        d = 6268.3;
+                    } else {
+                        // Eigene Werte aus den Textfeldern
+                        a = parseFloat(document.getElementById('customA').value.replace(',', '.')) || 0;
+                        b = parseFloat(document.getElementById('customB').value.replace(',', '.')) || 0;
+                        c = parseFloat(document.getElementById('customC').value.replace(',', '.')) || 0;
+                        d = parseFloat(document.getElementById('customD').value.replace(',', '.')) || 0;
+                    }
+                    
+                    // Polynomfunktion ausrechnen
+                    const stepsPerKm = (a * Math.pow(speed, 3)) + (b * Math.pow(speed, 2)) + (c * speed) + d;
+                    const segmentSteps = distInKm * stepsPerKm;
+                    
+                    if (segmentSteps > 0) {
+                        totalSteps += segmentSteps;
+                    }
+                }
+
+                // Ergebnis auf der Webseite anzeigen
+                if (totalSteps > 0) {
+                    document.getElementById('total-steps').innerText = Math.round(totalSteps).toLocaleString('de-DE');
                 } else {
-                    // Werte aus den Exponential-Feldern holen
-                    const A = parseSicher(document.getElementById('paramA').value);
-                    const B = parseSicher(document.getElementById('paramB').value);
-                    
-                    // Exponentialfunktion: A * e^(B * speed)
-                    stepsPerKm = A * Math.exp(B * speed);
+                    document.getElementById('total-steps').innerText = "0 (Eingaben prüfen)";
                 }
-                
-                const segmentSteps = distInKm * stepsPerKm;
-                
-                // Nur positive Werte aufaddieren
-                if (segmentSteps > 0) {
-                    totalSteps += segmentSteps;
-                }
-            });
 
-            // Ausgabe aktualisieren
-            const outputElement = document.getElementById('total-steps');
-            if (totalSteps > 0) {
-                // toLocaleString macht Tausendertrennpunkte rein (z.B. 1.250)
-                outputElement.innerText = Math.round(totalSteps).toLocaleString('de-DE');
-            } else {
-                outputElement.innerText = "0 (Überprüfe deine Eingaben!)";
+            } catch (error) {
+                // Falls ein Fehler auftritt, wird er dir jetzt als Pop-Up angezeigt!
+                alert("Fehler bei der Berechnung: " + error.message);
             }
         }
     </script>
