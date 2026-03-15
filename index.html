@@ -30,15 +30,16 @@
             border-radius: 5px;
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 15px;
             align-items: center;
         }
-        label { font-weight: bold; font-size: 0.9em; }
-        input {
-            width: 80px;
-            padding: 5px;
+        label { font-weight: bold; font-size: 0.9em; display: flex; flex-direction: column; }
+        input[type="text"] {
+            width: 90px;
+            padding: 8px;
             border: 1px solid #ccc;
             border-radius: 4px;
+            margin-top: 5px;
         }
         button {
             background-color: #3498db;
@@ -50,11 +51,7 @@
             font-size: 1em;
         }
         button:hover { background-color: #2980b9; }
-        .btn-remove {
-            background-color: #e74c3c;
-            padding: 5px 10px;
-            font-size: 0.8em;
-        }
+        .btn-remove { background-color: #e74c3c; padding: 8px 12px; font-size: 0.9em; margin-top: 20px;}
         .btn-remove:hover { background-color: #c0392b; }
         .btn-calculate {
             background-color: #2ecc71;
@@ -83,16 +80,20 @@
             border-radius: 4px;
             margin-bottom: 15px;
         }
-        .method-selector { margin-bottom: 15px; }
-        .radio-group { display: flex; gap: 20px; margin-top: 10px; }
-        #exponential-settings {
-            display: none;
+        .radio-group { display: flex; gap: 20px; margin-bottom: 15px; }
+        
+        .settings-panel {
             background: #fdfefe;
             border: 1px dashed #ccc;
             padding: 15px;
-            margin-top: 10px;
             border-radius: 5px;
         }
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+        }
+        #exponential-settings { display: none; }
     </style>
 </head>
 <body>
@@ -102,30 +103,32 @@
     <div class="card">
         <h3>1. Berechnungsmethode wählen</h3>
         
-        <div class="method-selector">
-            <div class="radio-group">
-                <label>
-                    <input type="radio" name="calcMethod" value="poly" checked onchange="toggleMethod()"> 
-                    Standard (Dein Polynom)
-                </label>
-                <label>
-                    <input type="radio" name="calcMethod" value="expo" onchange="toggleMethod()"> 
-                    Manuell (Exponential)
-                </label>
+        <div class="radio-group">
+            <label style="flex-direction: row; align-items: center; gap: 5px;">
+                <input type="radio" name="calcMethod" value="poly" checked onchange="toggleMethod()"> 
+                Polynomfunktion (Standard)
+            </label>
+            <label style="flex-direction: row; align-items: center; gap: 5px;">
+                <input type="radio" name="calcMethod" value="expo" onchange="toggleMethod()"> 
+                Exponentialfunktion
+            </label>
+        </div>
+
+        <div id="poly-settings" class="settings-panel">
+            <p class="formula-info">Formel (Schritte pro km): <strong>y = ax³ + bx² + cx + d</strong><br><em>(x = km/h)</em></p>
+            <div class="input-grid">
+                <label>Wert a: <input type="text" id="polyA" value="-17.219"></label>
+                <label>Wert b: <input type="text" id="polyB" value="346.42"></label>
+                <label>Wert c: <input type="text" id="polyC" value="-2303.9"></label>
+                <label>Wert d: <input type="text" id="polyD" value="6268.3"></label>
             </div>
         </div>
 
-        <div id="poly-info" class="formula-info">
-            <strong>Verwendete Formel (Schritte pro km):</strong><br>
-            y = -17,219x³ + 346,42x² - 2303,9x + 6268,3<br>
-            <em>(x = Geschwindigkeit in km/h)</em>
-        </div>
-
-        <div id="exponential-settings">
-            <p class="formula-info">Formel: <strong>Schritte pro km = A × e^(B × km/h)</strong></p>
-            <div>
+        <div id="exponential-settings" class="settings-panel">
+            <p class="formula-info">Formel (Schritte pro km): <strong>y = A × e^(B × x)</strong><br><em>(x = km/h)</em></p>
+            <div class="input-grid">
                 <label>Höhe (A): <input type="text" id="paramA" value="1500"></label>
-                <label style="margin-left: 15px;">Vorfaktor (B): <input type="text" id="paramB" value="-0.05"></label>
+                <label>Vorfaktor (B): <input type="text" id="paramB" value="-0.05"></label>
             </div>
         </div>
     </div>
@@ -134,14 +137,8 @@
         <h3>2. Deine Trainings-Segmente</h3>
         <div id="segment-container">
             <div class="segment">
-                <div>
-                    <label>Distanz (m): </label>
-                    <input type="text" class="dist-input" value="800">
-                </div>
-                <div>
-                    <label>Geschwindigkeit (km/h): </label>
-                    <input type="text" class="speed-input" value="3.5">
-                </div>
+                <label>Distanz (m): <input type="text" class="dist-input" value="800"></label>
+                <label>Geschwindigkeit (km/h): <input type="text" class="speed-input" value="3.5"></label>
             </div>
         </div>
         
@@ -156,78 +153,86 @@
     </div>
 
     <script>
+        // Wechselt zwischen den Eingabefeldern für die Formeln
         function toggleMethod() {
             const method = document.querySelector('input[name="calcMethod"]:checked').value;
+            document.getElementById('poly-settings').style.display = (method === 'poly') ? 'block' : 'none';
             document.getElementById('exponential-settings').style.display = (method === 'expo') ? 'block' : 'none';
-            document.getElementById('poly-info').style.display = (method === 'poly') ? 'block' : 'none';
         }
 
+        // Fügt ein neues Segment hinzu
         function addSegment() {
             const container = document.getElementById('segment-container');
             const segmentDiv = document.createElement('div');
             segmentDiv.className = 'segment';
             segmentDiv.innerHTML = `
-                <div>
-                    <label>Distanz (m): </label>
-                    <input type="text" class="dist-input" value="1000">
-                </div>
-                <div>
-                    <label>Geschwindigkeit (km/h): </label>
-                    <input type="text" class="speed-input" value="5.0">
-                </div>
-                <button class="btn-remove" onclick="this.parentElement.remove()">X Entfernen</button>
+                <label>Distanz (m): <input type="text" class="dist-input" value="1000"></label>
+                <label>Geschwindigkeit (km/h): <input type="text" class="speed-input" value="5.0"></label>
+                <button class="btn-remove" onclick="this.parentElement.remove()">X</button>
             `;
             container.appendChild(segmentDiv);
         }
 
-        // Hilfsfunktion: Wandelt Eingaben sicher in Zahlen um (z.B. "3,5" zu 3.5)
+        // Hilfsfunktion: Macht aus Kommas Punkte und fängt leere Felder sicher ab
         function parseSicher(wert) {
             if (!wert) return 0;
-            return parseFloat(wert.replace(',', '.')) || 0;
+            // Wandelt den Wert in einen String um, tauscht Komma gegen Punkt und macht eine Zahl daraus
+            return parseFloat(wert.toString().replace(',', '.')) || 0;
         }
 
+        // Die Hauptberechnung
         function calculateSteps() {
             const method = document.querySelector('input[name="calcMethod"]:checked').value;
             const segments = document.querySelectorAll('.segment');
             let totalSteps = 0;
 
             segments.forEach(segment => {
-                // Werte sicher auslesen
                 const distInMeters = parseSicher(segment.querySelector('.dist-input').value);
                 const speed = parseSicher(segment.querySelector('.speed-input').value);
                 
-                if (distInMeters === 0 || speed === 0) return; // Überspringen, wenn nichts eingetragen ist
+                // Wenn nichts Sinnvolles eingetragen wurde, ignoriere dieses Segment
+                if (distInMeters <= 0 || speed <= 0) return;
 
                 const distInKm = distInMeters / 1000;
                 let stepsPerKm = 0;
 
                 if (method === 'poly') {
-                    // Deine Polynomfunktion
+                    // Werte aus den eigenen Polynom-Feldern holen
+                    const a = parseSicher(document.getElementById('polyA').value);
+                    const b = parseSicher(document.getElementById('polyB').value);
+                    const c = parseSicher(document.getElementById('polyC').value);
+                    const d = parseSicher(document.getElementById('polyD').value);
+                    
+                    // Polynomfunktion: ax^3 + bx^2 + cx + d
                     stepsPerKm = 
-                        (-17.219 * Math.pow(speed, 3)) + 
-                        (346.42 * Math.pow(speed, 2)) - 
-                        (2303.9 * speed) + 
-                        6268.3;
+                        (a * Math.pow(speed, 3)) + 
+                        (b * Math.pow(speed, 2)) + 
+                        (c * speed) + 
+                        d;
                 } else {
-                    // Exponentialfunktion
+                    // Werte aus den Exponential-Feldern holen
                     const A = parseSicher(document.getElementById('paramA').value);
                     const B = parseSicher(document.getElementById('paramB').value);
+                    
+                    // Exponentialfunktion: A * e^(B * speed)
                     stepsPerKm = A * Math.exp(B * speed);
                 }
                 
-                // Endgültige Schritte für dieses Segment berechnen
                 const segmentSteps = distInKm * stepsPerKm;
                 
+                // Nur positive Werte aufaddieren
                 if (segmentSteps > 0) {
                     totalSteps += segmentSteps;
                 }
             });
 
-            // Ergebnis anzeigen
+            // Ausgabe aktualisieren
+            const outputElement = document.getElementById('total-steps');
             if (totalSteps > 0) {
-                document.getElementById('total-steps').innerText = Math.round(totalSteps).toLocaleString('de-DE');
+                // toLocaleString macht Tausendertrennpunkte rein (z.B. 1.250)
+                outputElement.innerText = Math.round(totalSteps).toLocaleString('de-DE');
             } else {
-                document.getElementById('total-steps').innerText = "0 (Bitte Werte prüfen)";
+                outputElement.innerText = "0 (Überprüfe deine Eingaben!)";
             }
         }
     </script>
