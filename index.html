@@ -155,8 +155,10 @@
     <script>
         // Wechselt zwischen festem und manuellem Polynom
         function toggleMethod() {
-            const method = document.querySelector('input[name="calcMethod"]:checked').value;
-            if (method === 'fixed_poly') {
+            const methodEl = document.querySelector('input[name="calcMethod"]:checked');
+            if (!methodEl) return;
+            
+            if (methodEl.value === 'fixed_poly' || methodEl.value === 'poly') {
                 document.getElementById('fixed-poly-info').style.display = 'block';
                 document.getElementById('custom-poly-settings').style.display = 'none';
             } else {
@@ -181,40 +183,51 @@
         // Hauptfunktion zur Berechnung
         function calculateSteps() {
             try {
-                const method = document.querySelector('input[name="calcMethod"]:checked').value;
+                // Fängt den Fall ab, falls alte HTML-Radiobuttons geladen wurden
+                const methodElement = document.querySelector('input[name="calcMethod"]:checked');
+                const method = methodElement ? methodElement.value : 'fixed_poly';
+                
                 const segments = document.querySelectorAll('.segment');
                 let totalSteps = 0;
 
-                // Gehe durch jedes angelegte Segment
                 for (let i = 0; i < segments.length; i++) {
                     const segment = segments[i];
-                    const distStr = segment.querySelector('.dist-input').value;
-                    const speedStr = segment.querySelector('.speed-input').value;
                     
-                    // Wandelt Text in Kommazahlen um (ersetzt Komma durch Punkt für JavaScript)
-                    const distInMeters = parseFloat(distStr.replace(',', '.')) || 0;
-                    const speed = parseFloat(speedStr.replace(',', '.')) || 0;
+                    const distInput = segment.querySelector('.dist-input');
+                    const speedInput = segment.querySelector('.speed-input');
                     
-                    if (distInMeters <= 0 || speed <= 0) continue; // Überspringen, falls 0 oder leer
+                    if (!distInput || !speedInput) continue; // Wenn Felder fehlen, überspringen
+                    
+                    const distInMeters = parseFloat(distInput.value.replace(',', '.')) || 0;
+                    const speed = parseFloat(speedInput.value.replace(',', '.')) || 0;
+                    
+                    if (distInMeters <= 0 || speed <= 0) continue; 
 
                     const distInKm = distInMeters / 1000;
                     let a = 0, b = 0, c = 0, d = 0;
 
-                    if (method === 'fixed_poly') {
-                        // Deine festen Werte
+                    if (method === 'fixed_poly' || method === 'poly') { // "poly" fängt alte Versionen ab
                         a = -17.219;
                         b = 346.42;
                         c = -2303.9;
                         d = 6268.3;
                     } else {
-                        // Eigene Werte aus den Textfeldern
-                        a = parseFloat(document.getElementById('customA').value.replace(',', '.')) || 0;
-                        b = parseFloat(document.getElementById('customB').value.replace(',', '.')) || 0;
-                        c = parseFloat(document.getElementById('customC').value.replace(',', '.')) || 0;
-                        d = parseFloat(document.getElementById('customD').value.replace(',', '.')) || 0;
+                        const elA = document.getElementById('customA');
+                        const elB = document.getElementById('customB');
+                        const elC = document.getElementById('customC');
+                        const elD = document.getElementById('customD');
+                        
+                        // Wenn die neuen HTML-Felder fehlen, melde den Fehler eindeutig
+                        if (!elA || !elB || !elC || !elD) {
+                            throw new Error("Bitte lösche einmal den gesamten Code in GitHub (Strg+A) und kopiere ihn komplett neu. HTML und Skript passen nicht zusammen.");
+                        }
+
+                        a = parseFloat(elA.value.replace(',', '.')) || 0;
+                        b = parseFloat(elB.value.replace(',', '.')) || 0;
+                        c = parseFloat(elC.value.replace(',', '.')) || 0;
+                        d = parseFloat(elD.value.replace(',', '.')) || 0;
                     }
                     
-                    // Polynomfunktion ausrechnen
                     const stepsPerKm = (a * Math.pow(speed, 3)) + (b * Math.pow(speed, 2)) + (c * speed) + d;
                     const segmentSteps = distInKm * stepsPerKm;
                     
@@ -223,7 +236,6 @@
                     }
                 }
 
-                // Ergebnis auf der Webseite anzeigen
                 if (totalSteps > 0) {
                     document.getElementById('total-steps').innerText = Math.round(totalSteps).toLocaleString('de-DE');
                 } else {
@@ -231,8 +243,7 @@
                 }
 
             } catch (error) {
-                // Falls ein Fehler auftritt, wird er dir jetzt als Pop-Up angezeigt!
-                alert("Fehler bei der Berechnung: " + error.message);
+                alert(error.message);
             }
         }
     </script>
